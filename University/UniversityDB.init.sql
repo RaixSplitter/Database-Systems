@@ -11,10 +11,13 @@ Sixth Edition, 2011.*/
  
 #Create a dummy database called test with the attribute names and types!
 
--- CREATE DATABASE IF NOT EXISTS University;
+DROP DATABASE IF EXISTS University; 
+
+CREATE DATABASE IF NOT EXISTS University;
+
+USE University;
 
 
--- USE University;
 DROP TABLE IF EXISTS University;
 
 DROP TABLE IF EXISTS PreReq;

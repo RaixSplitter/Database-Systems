@@ -29,7 +29,7 @@ DROP TABLE IF EXISTS Person;
 -- CREATE TABLES
 
 CREATE TABLE Person
-    (DriverID       VARCHAR(8),
+    (DriverID       CHAR(8),
      DriverName		VARCHAR(20) NOT NULL,
      _Address		VARCHAR(50),
      PRIMARY KEY(DriverID)
@@ -43,14 +43,14 @@ CREATE TABLE Car
     );
 
 CREATE TABLE Accident
-    (ReportNumber	VARCHAR(10),
+    (ReportNumber	CHAR(10),
      AccDate		DATE,
      _Location		VARCHAR(50),
      PRIMARY KEY(ReportNumber)
     );
 
 CREATE TABLE Owns
-    (DriverID		VARCHAR(8),
+    (DriverID		CHAR(8),
      License		VARCHAR(8),
      PRIMARY KEY(DriverID, License),
      FOREIGN KEY(DriverID)      REFERENCES Person(DriverID) ON DELETE CASCADE,
@@ -58,9 +58,9 @@ CREATE TABLE Owns
     );
 
 CREATE TABLE Participants
-    (ReportNumber	VARCHAR(10),
+    (ReportNumber	CHAR(10),
      License		CHAR(7),
-     DriverID		VARCHAR(8),
+     DriverID		CHAR(8),
      DamageAmount	DECIMAL(8,2),
      PRIMARY KEY(ReportNumber, License),
      FOREIGN KEY(ReportNumber)  REFERENCES Accident(ReportNumber) ON DELETE CASCADE,

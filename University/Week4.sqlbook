@@ -1,0 +1,180 @@
+-- SQLBook: Markup
+## Initialize File
+-- SQLBook: Code
+use University;
+
+
+-- SQLBook: Markup
+## EX 4.2.1
+-- SQLBook: Code
+-- Counts the number of instructors in each department
+SELECT DEPTNAME, COUNT(*) FROM INSTRUCTOR GROUP BY DEPTNAME;
+
+-- SQLBook: Markup
+Alternative way of displaying it
+-- SQLBook: Code
+-- Display the department table with the respective number of instructors
+SELECT department.*, subquery.instructor_count
+FROM department
+LEFT JOIN (
+    SELECT DEPTNAME, COUNT(*) as instructor_count 
+    FROM INSTRUCTOR 
+    GROUP BY DEPTNAME
+) as subquery
+ON department.DEPTNAME = subquery.DEPTNAME;
+-- SQLBook: Markup
+The following is an example of how to alter the table to add an attribute with the instructor count. This is not recommended but doable, NOTICE how you cannot simply do the alter table command with a IF NOT EXISTS!
+-- SQLBook: Code
+
+
+
+-- -- If you want to create a new attribute storing the instructorcount in the department table
+-- ALTER TABLE DEPARTMENT ADD COLUMN InstructorCount INT;
+
+-- UPDATE DEPARTMENT
+-- LEFT JOIN (
+--     SELECT DEPTNAME, COUNT(*) as instructor_count 
+--     FROM INSTRUCTOR 
+--     GROUP BY DEPTNAME
+-- ) as subquery ON DEPARTMENT.DEPTNAME = subquery.DEPTNAME
+-- SET DEPARTMENT.InstructorCount = subquery.instructor_count
+-- WHERE subquery.DEPTNAME IS NOT NULL;
+-- SELECT * FROM DEPARTMENT;
+
+
+
+-- SQLBook: Markup
+## EX 4.2.2
+-- SQLBook: Code
+SELECT CourseID, PREREQ.PreReqID FROM COURSE NATURAL JOIN PREREQ;
+-- SQLBook: Markup
+## EX 4.2.3
+-- SQLBook: Markup
+First we figure out how to query the prereqs count, such that the resulting query are tuples of courses, with a count representing the number of courses it is a prereq for.
+-- SQLBook: Code
+-- Count the number of prerequisites for each course
+SELECT COURSEID, COUNT(PREREQID)
+FROM PREREQ 
+GROUP BY PREREQID;
+
+-- SQLBook: Markup
+Then we can take the previous query as a sub query, to combine the course table with the counts using a left join. Notice that both a natural left join and a conditional left join is useable here.
+-- SQLBook: Code
+SELECT COURSE.*, subquery.prereq_count
+FROM COURSE
+LEFT JOIN (
+    SELECT COURSEID, COUNT(PREREQID) as prereq_count
+    FROM PREREQ 
+    GROUP BY PREREQID
+) as subquery
+ON COURSE.COURSEID = subquery.COURSEID;
+-- SQLBook: Markup
+To remove the nulls and replace with zeros we can optionally use <a href="https://www.w3schools.com/sql/func_sqlserver_coalesce.asp">COALESCE</a>
+
+-- SQLBook: Code
+SELECT COURSE.*, COALESCE(subquery.prereq_count, 0)
+FROM COURSE
+LEFT JOIN (
+    SELECT COURSEID, COUNT(PREREQID) as prereq_count
+    FROM PREREQ 
+    GROUP BY PREREQID
+) as subquery
+ON COURSE.COURSEID = subquery.COURSEID;
+-- SQLBook: Markup
+## EX 4.2.4
+-- SQLBook: Markup
+If we do inner join operations between the tables TAKES, STUDENT and COURSE, we are able to query all active students with the course names. Then we only need to sort them after.
+-- SQLBook: Code
+-- Natural join
+SELECT S.StudName, C.Title 
+FROM TAKES T 
+NATURAL JOIN STUDENT S 
+NATURAL JOIN COURSE C 
+ORDER BY S.STUDNAME;
+
+-- SQLBook: Markup
+We can achieve the same thing with inner joins and specific conditions, resulting in a less abstracted command
+-- SQLBook: Code
+SELECT S.StudName, C.Title 
+FROM TAKES T 
+INNER JOIN STUDENT S ON T.StudID = S.StudID
+INNER JOIN COURSE C ON T.CourseID = C.CourseID
+ORDER BY S.STUDNAME;
+-- SQLBook: Markup
+## EX 4.2.5
+-- SQLBook: Markup
+
+-- SQLBook: Markup
+## EX 4.2.6
+-- SQLBook: Markup
+First create the view
+-- SQLBook: Code
+CREATE VIEW 
+IF NOT EXISTS SeniorInstructors as 
+SELECT InstName, DeptName, Salary 
+FROM INSTRUCTOR 
+WHERE Salary > 80000;
+-- SQLBook: Markup
+View your view
+-- SQLBook: Code
+SELECT * FROM SeniorInstructors;
+-- SQLBook: Markup
+## EX 4.2.7
+-- SQLBook: Markup
+Create users
+-- SQLBook: Code
+CREATE USER 'karen'@'localhost'
+  IDENTIFIED BY 'karen123';
+
+CREATE USER 'linda'@'localhost'
+  IDENTIFIED BY 'linda123';
+
+CREATE USER 'susan'@'localhost'
+  IDENTIFIED BY 'susan123';
+
+-- SQLBook: Markup
+Give permissions
+-- SQLBook: Code
+GRANT SELECT
+  ON University.*
+  TO 'karen'@'localhost'
+
+GRANT ALL
+  ON University.*
+  TO 'linda'@'localhost'
+
+GRANT ALL
+  ON University.*
+  TO 'susan'@'localhost'
+-- SQLBook: Markup
+Open connection as Karen and attempt some commands
+-- SQLBook: Code
+USE University;
+SELECT * FROM INSTRUCTOR;
+-- SQLBook: Markup
+This will give an error since Karen does not have permission
+-- SQLBook: Code
+-- CREATE TABLE TEMPORARY with the attribute names
+use University;
+
+CREATE TABLE TMP
+	(InstID			VARCHAR(5), 
+	 InstName		VARCHAR(20) NOT NULL, 
+	 DeptName		VARCHAR(20), 
+	 Salary			DECIMAL(8,2),
+	 PRIMARY KEY (InstID),
+	 FOREIGN KEY(DeptName) REFERENCES Department(DeptName) ON DELETE SET NULL
+	);
+
+DROP TABLE IF EXISTS TMP;
+
+-- SQLBook: Markup
+Karen can change her own password
+-- SQLBook: Code
+SET PASSWORD FOR 'karen'@'localhost' = PASSWORD('KarenSecret');
+-- SQLBook: Markup
+Drop users
+-- SQLBook: Code
+DROP USER 'karen'@'localhost';
+DROP USER 'linda'@'localhost';
+DROP USER 'susan'@'localhost';
