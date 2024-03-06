@@ -1,0 +1,180 @@
+-- SQLBook: Code
+use University;
+
+-- SQLBook: Markup
+## EX 5.2.1 Create a Function
+-- SQLBook: Code
+-- Create Function BuildingCapacityFct
+DELIMITER $$
+CREATE FUNCTION BuildingCapacityFct(vBname VARCHAR(20))
+RETURNS INT
+BEGIN
+    DECLARE vTotalCap INT;
+    SELECT SUM(Capacity) INTO vTotalCap
+    FROM Classroom
+    WHERE Building = vBname;
+    RETURN vTotalCap;
+END $$
+DELIMITER ;
+
+SELECT BuildingCapacityFct('Packard');
+
+SELECT * FROM Classroom
+WHERE Capacity > BuildingCapacityFct('Watson');
+
+DROP FUNCTION BuildingCapacityFct;
+-- SQLBook: Markup
+## EX 5.2.2 Procedure with Error Signalling
+-- SQLBook: Markup
+Quicknote MARIADB SQL does not really work with booleans, so we will use 0 and 1 instead. BOOL Column types are in reality TINYINT(1) types.
+-- SQLBook: Code
+CREATE FUNCTION timeoverlap (
+    vDayCode1 ENUM(
+        'M', 'T', 'W', 'R', 'F', 'S', 'U'
+    ), vStartTime1 TIME, vEndTime1 TIME, vDayCode2 ENUM(
+        'M', 'T', 'W', 'R', 'F', 'S', 'U'
+    ), vStartTime2 TIME, vEndTime2 TIME
+) RETURNS BOOLEAN
+RETURN vDayCode1 = vDayCode2
+AND (
+    (
+        vstartTime1 <= vStartTime2
+        AND vStartTime2 <= vEndTime1
+    )
+    OR (
+        vstartTime2 <= vStartTime1
+        AND vStartTime1 <= vEndTime2
+    )
+);
+# assumes vStartTimei <= vEndTimei
+#testing timeoverlap function:
+#different start
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'T', '08:00:00', '08:50:00'
+    );
+#should return 0
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '09:00:00', '09:50:00'
+    );
+#should return 0
+#same start
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '08:00:00', '08:40:00'
+    );
+#should return 1
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '08:00:00', '08:40:00'
+    );
+#should return 1
+#first starts before second on the same day
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '08:10:00', '08:40:00'
+    );
+#should return 1
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '08:10:00', '08:50:00'
+    );
+#should return 1
+SELECT timeoverlap (
+        'M', '08:00:00', '08:50:00', 'M', '08:10:00', '09:00:00'
+    );
+#should return 1
+#second starts before first on the same day
+SELECT timeoverlap (
+        'M', '08:10:00', '08:40:00', 'M', '08:00:00', '08:50:00'
+    );
+#should return 1
+SELECT timeoverlap (
+        'M', '08:10:00', '08:50:00', 'M', '08:00:00', '08:50:00'
+    );
+#should return 1
+SELECT timeoverlap (
+        'M', '08:10:00', '09:00:00', 'M', '08:00:00', '08:50:00'
+    );
+#should return 1
+CREATE FUNCTION timeoverlapWithTable (
+    vTimeSlotID VARCHAR(4), vDayCode ENUM(
+        'M', 'T', 'W', 'R', 'F', 'S', 'U'
+    ), vStartTime TIME, vEndTime TIME
+) RETURNS BOOLEAN
+RETURN EXISTS (
+    SELECT *
+    FROM TimeSlot
+    WHERE
+        TimeSlotID = vTimeSlotID
+        AND timeoverlap (
+            vDayCode, vStartTime, vEndTime, DayCode, StartTime, EndTime
+        )
+);
+#testing timeoverlapWithTable function:
+SELECT timeoverlapWithTable ( 'A', 'M', '08:10:00', '08:40:00' );
+#should return 1
+SELECT timeoverlapWithTable ( 'A', 'M', '09:00:00', '09:50:00' );
+#should return 0
+SELECT timeoverlapWithTable ( 'A', 'T', '08:00:00', '08:50:00' );
+#should return 0
+-- SQLBook: Code
+DELIMITER / /
+
+CREATE PROCEDURE InsertTimeSlot(IN vTimeSlotID VARCHAR
+(4), IN vDayCode ENUM('M', 'T', 'W', 'R', 'F', 'S', 
+'U'), IN vStartTime TIME, IN vEndTime TIME) 
+BEGIN 
+	IF vEndTime < = vStartTime
+	#bad time interval
+	THEN SIGNAL SQLSTATE 'HY000'
+	SET
+	    MYSQL_ERRNO = 1525,
+	    MESSAGE_TEXT = 'EndTime is equal to or before StartTime';
+END
+	IF;
+	IF timeoverlapWithTable (
+	    vTimeSlotID, vDayCode, vStartTime, vEndTime
+	) THEN SIGNAL SQLSTATE 'HY000'
+	SET
+	    MYSQL_ERRNO = 1525,
+	    MESSAGE_TEXT = 'time interval overlaps with existing timeinterval for the same TimeSlotID';
+END
+	IF;
+	INSERT
+	    TimeSlot
+	VALUES (
+	        vTimeSlotID, vDayCode, vStartTime, vEndTime
+	    );
+END
+// 
+#END BEGIN
+DELIMITER;
+#testing procedure
+SELECT * FROM TimeSlot;
+#
+CALL InsertTimeSlot ( 'A', 'T', '08:50:00', '08:00:00' );
+# should give error message
+
+CALL InsertTimeSlot ( 'A', 'M', '08:50:00', '08:00:00' );
+# should give error message
+CALL InsertTimeSlot ( 'A', 'M', '08:10:00', '08:40:00' );
+# should give error message 'time
+SELECT * FROM TimeSlot;
+#no changes in
+CALL InsertTimeSlot ( 'A', 'T', '08:00:00', '08:50:00' );
+# is succesfull
+SELECT * FROM TimeSlot;
+#new row is added
+
+-- SQLBook: Code
+SET GLOBAL event_scheduler = 1; # enable event scheduler, basically enabling events to trigger
+
+CREATE TABLE BallRolls (
+    RollNo INTEGER AUTO_INCREMENT PRIMARY KEY, LuckyNo INTEGER
+);
+
+CREATE EVENT RollBall ON SCHEDULE EVERY 10 SECOND DO
+INSERT
+    BallRolls (LuckyNo)
+VALUES (FLOOR(37 * RAND()));
+
+SELECT * FROM BallRolls;
+
+DROP EVENT RollBall;
+DROP TABLE BallRolls;
