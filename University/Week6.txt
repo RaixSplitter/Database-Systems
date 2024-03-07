@@ -1,0 +1,27 @@
+
+Fill the following table schema with randomized values
+
+
+Clients
+Name,               StreetName,     Age
+John Doe,           Main Street,    25
+Jane Smith,         Elm Street,     35
+Mike Johnson,       Oak Street,     40
+
+
+Car
+License Plate Number,   Color,    Production Year
+ABC123,                 Red,    2015
+XYZ789,                 Blue,   2018
+DEF456,                 Green,  2016
+GHI789,                 Black,  2017
+JKL321,                 White,  2019
+
+
+StartTime
+Name,           License Plate Number,   Date
+John Doe,       ABC123,                 2022-05-10
+John Doe,       XYZ789,                 2022-06-15
+Jane Smith,     DEF456,                 2022-04-20
+Jane Smith,     GHI789,                 2022-07-01
+Mike Johnson,   JKL321,                 2022-03-05
